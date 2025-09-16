@@ -77,8 +77,8 @@ node-red
 - **Status do Campo** → exibe decisão final (*Liberado, Avaliar, Desaconselhado, Suspenso*).  
 - **Gauges** → temperatura, chuva e vento.  
 - **Histórico** → gráfico em tempo real de temperatura e chuva.  
-![Dashboard](image1.png)
-![Flow](image2.png)
+![Dashboard](imagens/image1.png)
+![Flow](imagens/image2.png)
 
 ---
 
