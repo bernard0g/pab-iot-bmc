@@ -1,0 +1,366 @@
+[
+  {
+    "id": "tab_pbclima_02",
+    "type": "tab",
+    "label": "Passa a Bola - Clima (ChartFix)",
+    "disabled": false,
+    "info": ""
+  },
+  {
+    "id": "tab_cfg_c2a1",
+    "type": "ui_tab",
+    "name": "Passa a Bola",
+    "icon": "dashboard",
+    "order": 1,
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "grp_cfg_5fd9",
+    "type": "ui_group",
+    "name": "Clima do Campo",
+    "tab": "tab_cfg_c2a1",
+    "order": 1,
+    "disp": true,
+    "width": "12",
+    "collapse": false
+  },
+  {
+    "id": "inj_now_fix",
+    "z": "tab_pbclima_02",
+    "type": "inject",
+    "name": "Rodar agora",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "now",
+    "payloadType": "str",
+    "x": 150,
+    "y": 120,
+    "wires": [
+      [
+        "chg_url_fix"
+      ]
+    ]
+  },
+  {
+    "id": "inj_5m_fix",
+    "z": "tab_pbclima_02",
+    "type": "inject",
+    "name": "Agendar (5 min)",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "300",
+    "once": true,
+    "onceDelay": "1",
+    "topic": "",
+    "payload": "timer",
+    "payloadType": "str",
+    "x": 160,
+    "y": 170,
+    "wires": [
+      [
+        "chg_url_fix"
+      ]
+    ]
+  },
+  {
+    "id": "chg_url_fix",
+    "z": "tab_pbclima_02",
+    "type": "change",
+    "name": "Definir lat/lon e URL",
+    "rules": [
+      {
+        "t": "set",
+        "p": "lat",
+        "pt": "msg",
+        "to": "-23.5505",
+        "tot": "num"
+      },
+      {
+        "t": "set",
+        "p": "lon",
+        "pt": "msg",
+        "to": "-46.6333",
+        "tot": "num"
+      },
+      {
+        "t": "set",
+        "p": "url",
+        "pt": "msg",
+        "to": "$string(\"https://api.open-meteo.com/v1/forecast?latitude=\" & $.lat & \"&longitude=\" & $.lon & \"&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&current_weather=true&forecast_days=1&timezone=auto\")",
+        "tot": "jsonata"
+      }
+    ],
+    "x": 410,
+    "y": 145,
+    "wires": [
+      [
+        "http_om_fix"
+      ]
+    ]
+  },
+  {
+    "id": "http_om_fix",
+    "z": "tab_pbclima_02",
+    "type": "http request",
+    "name": "Open‑Meteo",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 650,
+    "y": 145,
+    "wires": [
+      [
+        "fn_score_fix",
+        "dbg_raw_fix"
+      ]
+    ]
+  },
+  {
+    "id": "fn_score_fix",
+    "z": "tab_pbclima_02",
+    "type": "function",
+    "name": "Calcular Índice de Jogo (com jitter)",
+    "func": "\nconst h = msg.payload.hourly || {};\nconst cw = msg.payload.current_weather || {};\nconst idx = h.time ? h.time.findIndex(t => t === cw.time) : -1;\nconst i = idx >= 0 ? idx : 0;\nlet temp = (h.temperature_2m && h.temperature_2m[i]) ?? cw.temperature ?? 22;\nlet hum  = (h.relative_humidity_2m && h.relative_humidity_2m[i]) ?? 60;\nlet rain = (h.precipitation && h.precipitation[i]) ?? 0;\nlet wind = (h.wind_speed_10m && h.wind_speed_10m[i]) ?? cw.windspeed ?? 5;\n\n// Adiciona um leve \"jitter\" para demonstrar mudança nos testes manuais\nconst j = () => (Math.random()*0.8 - 0.4); // -0.4 .. +0.4\ntemp = Number((temp + j()).toFixed(1));\nrain = Math.max(0, Number((rain + j()).toFixed(1)));\nwind = Math.max(0, Number((wind + j()).toFixed(1)));\n\nlet score = 100;\nif (temp < 12 || temp > 34) score -= 40;\nelse if (temp < 18 || temp > 26) score -= 15;\nif (rain >= 10) score -= 45;\nelse if (rain >= 2) score -= 25;\nelse if (rain > 0) score -= 10;\nif (wind >= 40) score -= 25;\nelse if (wind >= 25) score -= 15;\nelse if (wind >= 15) score -= 8;\nif (hum >= 90) score -= 10;\nelse if (hum >= 75) score -= 5;\n\nscore = Math.max(0, Math.min(100, score));\n\nlet status = \"JOGO LIBERADO\";\nif (score < 60) status = \"AVALIAR (condições medianas)\";\nif (score < 40) status = \"DESACONSELHADO\";\nif (score < 20) status = \"SUSPENSO\";\n\nconst out = { _metrics: { temp, hum, rain, wind, score }, status };\nreturn [{ payload: out }, { topic: \"passa_bola/campo1/clima\", payload: out }];\n",
+    "outputs": 2,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 905,
+    "y": 145,
+    "wires": [
+      [
+        "fn_ui_fix"
+      ],
+      [
+        "mqtt_out_fix"
+      ]
+    ]
+  },
+  {
+    "id": "mqtt_broker_fix",
+    "type": "mqtt-broker",
+    "name": "Local Mosquitto",
+    "broker": "localhost",
+    "port": "1883",
+    "clientid": "",
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true
+  },
+  {
+    "id": "mqtt_out_fix",
+    "z": "tab_pbclima_02",
+    "type": "mqtt out",
+    "name": "Publicar decisão",
+    "topic": "",
+    "qos": "",
+    "retain": "",
+    "respTopic": "",
+    "contentType": "",
+    "userProps": "",
+    "correl": "",
+    "expiry": "",
+    "broker": "mqtt_broker_fix",
+    "x": 1190,
+    "y": 185,
+    "wires": []
+  },
+  {
+    "id": "dbg_raw_fix",
+    "z": "tab_pbclima_02",
+    "type": "debug",
+    "name": "raw",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload.current_weather",
+    "targetType": "msg",
+    "x": 870,
+    "y": 195,
+    "wires": []
+  },
+  {
+    "id": "fn_ui_fix",
+    "z": "tab_pbclima_02",
+    "type": "function",
+    "name": "Atualizar Widgets / Chart por Tópico",
+    "func": "\nconst m = msg.payload._metrics;\n\n// Para gauges e status (1..4)\nconst o1 = {payload: `${msg.payload.status} (Índice ${m.score})`};\nconst o2 = {payload: m.temp};\nconst o3 = {payload: m.rain};\nconst o4 = {payload: m.wind};\n\n// Para o chart, enviar duas mensagens separadas com topic\nconst o5 = {topic: 'Temp', payload: m.temp};\nconst o6 = {topic: 'Chuva', payload: m.rain};\n\nreturn [o1,o2,o3,o4,o5,o6];\n",
+    "outputs": 6,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 1180,
+    "y": 145,
+    "wires": [
+      [
+        "ui_txt_fix"
+      ],
+      [
+        "ui_temp_fix"
+      ],
+      [
+        "ui_rain_fix"
+      ],
+      [
+        "ui_wind_fix"
+      ],
+      [
+        "ui_chart_fix"
+      ],
+      [
+        "ui_chart_fix"
+      ]
+    ]
+  },
+  {
+    "id": "ui_txt_fix",
+    "z": "tab_pbclima_02",
+    "type": "ui_text",
+    "group": "grp_cfg_5fd9",
+    "order": 1,
+    "width": "12",
+    "height": "1",
+    "name": "Status do Campo",
+    "label": "Status do Campo",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "x": 1470,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "ui_temp_fix",
+    "z": "tab_pbclima_02",
+    "type": "ui_gauge",
+    "group": "grp_cfg_5fd9",
+    "order": 2,
+    "width": "4",
+    "height": "4",
+    "name": "Temp (°C)",
+    "gtype": "gage",
+    "title": "Temp (°C)",
+    "label": "°C",
+    "format": "{{value}}",
+    "min": -5,
+    "max": "40",
+    "colors": [
+      "#00bcd4",
+      "#fdd835",
+      "#f44336"
+    ],
+    "seg1": "18",
+    "seg2": "26",
+    "x": 1460,
+    "y": 160,
+    "wires": []
+  },
+  {
+    "id": "ui_rain_fix",
+    "z": "tab_pbclima_02",
+    "type": "ui_gauge",
+    "group": "grp_cfg_5fd9",
+    "order": 3,
+    "width": "4",
+    "height": "4",
+    "name": "Chuva (mm/h)",
+    "gtype": "gage",
+    "title": "Chuva (mm/h)",
+    "label": "mm/h",
+    "format": "{{value}}",
+    "min": 0,
+    "max": "20",
+    "colors": [
+      "#66bb6a",
+      "#fdd835",
+      "#ef5350"
+    ],
+    "seg1": "2",
+    "seg2": "10",
+    "x": 1475,
+    "y": 210,
+    "wires": []
+  },
+  {
+    "id": "ui_wind_fix",
+    "z": "tab_pbclima_02",
+    "type": "ui_gauge",
+    "group": "grp_cfg_5fd9",
+    "order": 4,
+    "width": "4",
+    "height": "4",
+    "name": "Vento (km/h)",
+    "gtype": "gage",
+    "title": "Vento (km/h)",
+    "label": "km/h",
+    "format": "{{value}}",
+    "min": 0,
+    "max": "60",
+    "colors": [
+      "#66bb6a",
+      "#fdd835",
+      "#ef5350"
+    ],
+    "seg1": "15",
+    "seg2": "40",
+    "x": 1460,
+    "y": 260,
+    "wires": []
+  },
+  {
+    "id": "ui_chart_fix",
+    "z": "tab_pbclima_02",
+    "type": "ui_chart",
+    "group": "grp_cfg_5fd9",
+    "order": 5,
+    "width": "12",
+    "height": "5",
+    "name": "Histórico (Temp/Chuva)",
+    "label": "Histórico (Temp, Chuva)",
+    "chartType": "line",
+    "legend": "true",
+    "xformat": "HH:mm",
+    "interpolate": "linear",
+    "nodata": "Sem dados",
+    "dot": false,
+    "ymin": "",
+    "ymax": "",
+    "removeOlder": "10",
+    "removeOlderPoints": "",
+    "removeOlderUnit": "3600",
+    "useOneColor": false,
+    "colors": [
+      "#1f77b4",
+      "#ff7f0e",
+      "#2ca02c",
+      "#d62728"
+    ],
+    "outputs": 1,
+    "x": 1470,
+    "y": 315,
+    "wires": [
+      []
+    ]
+  }
+]
