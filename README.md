@@ -10,7 +10,7 @@ A solução utiliza **Node-RED** e **Mosquitto (MQTT)** para coletar e processar
 
 ## 👥 Integrantes
 - Caio Marques Lins | RM: 559805  
-- Murilo Gonzalez Bez Chleba | RM: 556199  
+- Murilo Gonzalez Bez Chleba | RM: 566199  
 - Bernardo Lozório Gomes Y Gomes | RM: 564943  
 
 ---
