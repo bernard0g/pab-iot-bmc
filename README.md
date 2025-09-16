@@ -83,7 +83,7 @@ node-red
 ---
 
 ## 📹 Vídeo Explicativo
-➡️ [Link para o vídeo no YouTube](https://youtube.com)
+➡️ [Link para o vídeo no YouTube](https://youtu.be/bT7y7wfQRzk)
 
 ---
 
