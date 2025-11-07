@@ -1,7 +1,7 @@
 # 🌐 Passa a Bola – Monitoramento Climático com IoT
 
 ## 📌 Descrição do Projeto
-Este projeto foi desenvolvido como parte da disciplina **Edge Computing and Computer Systems (Sprint 3)**.  
+Este projeto foi desenvolvido como parte da disciplina **Edge Computing and Computer Systems (Sprint 4)**.  
 O objetivo é aplicar **IoT** no desafio *Passa a Bola*, criando um protótipo capaz de **avaliar em tempo real se o clima está propício para jogos de futebol feminino**.
 
 A solução utiliza **Node-RED** e **Mosquitto (MQTT)** para coletar e processar dados climáticos (via API), calcular um índice de jogabilidade e exibir o resultado em um painel interativo.
